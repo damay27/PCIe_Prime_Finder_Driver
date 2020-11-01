@@ -42,16 +42,6 @@ uint32_t read_register(int fd, int reg_offset) {
     uint32_t return_val;
     int read_count;
 
-    // if(reg_select == FLAG_REG) {
-    //     lseek(fd, 8, SEEK_SET);
-    // }
-    // else if (reg_select == PRIME_REG) {
-    //     lseek(fd, 12, SEEK_SET);
-    // }
-    // else {
-    //     return -1;
-    // }
-
     lseek(fd, reg_offset, SEEK_SET);
 
     read_count = read(fd, &return_val, sizeof(return_val));
@@ -82,33 +72,16 @@ int main(void) {
     printf("Enter the start number: ");
     scanf("%ud", &start_number);
 
-    // lseek(fd, 1, SEEK_CUR);
-
     uint32_t data[2] = {1, 4};
 
+    clear_registers(fd);
 
-    printf("%d\n", clear_registers(fd));
-
-    // uint32_t read_val;
-    // lseek(fd, 0, SEEK_SET);
-    // count = read(fd, &read_val, sizeof(unsigned int));
-    printf("%d\n", start_search(fd, start_number));
+    start_search(fd, start_number);
 
     while(check_complete(fd) != 1) {
         usleep(250000);
     }
-    printf("\n%u\n", read_result(fd));
-
-    // sleep(2);
-
-    // printf("%d\n", check_complete(fd));
-
-    // printf("\n%d\n", read_result(fd));
-
-    // sleep(2);
-
-    // printf("%d\n", read_register(fd, DONE_FLAG));
-    // printf("%d\n", read_register(fd, PRIME_NUMBER));
+    printf("%u\n", read_result(fd));
 
     return 0;
 }
