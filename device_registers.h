@@ -1,0 +1,4 @@
+#define START_FLAG 0
+#define START_NUMBER 4
+#define DONE_FLAG 8
+#define PRIME_NUMBER 12

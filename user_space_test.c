@@ -2,25 +2,35 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <stdint.h>
+#include <stdlib.h>
 
-//These hold the byte offsets of each register
-#define START_FLAG 0
-#define START_NUMBER 4
-#define DONE_FLAG 8
-#define PRIME_NUMBER 12
+//Defines macros for each register in the prime finder device
+#include "device_registers.h"
 
+/*
+    Write zero to each of the user writable registers on the device.
+
+    Parameters:
+        fd : File descriptor of the device file.
+*/
 int clear_registers(int fd) {
     uint32_t data = 0;
     int status;
 
+    //Move the file pointer to the start flag register then write zero to it
+    //and check for errors.
     lseek(fd, START_FLAG, SEEK_SET);
     status = write(fd, &data, sizeof(data));
     if(status == -1) return -1;
+
+    //There is no need to seek to the next register value since the previous write
+    //operation will already have moved the file pointer
     status = write(fd, &data, sizeof(data));
     if(status == -1) return -1;
 
     return 0;
 }
+
 
 int start_search(int fd, uint32_t start_val) {
     const uint32_t start_flag = 1;
@@ -64,23 +74,39 @@ uint32_t read_result(int fd) {
     return read_register(fd, PRIME_NUMBER);
 }
 
-int main(void) {
+int main(int argc, char *argv[]) {
     int count;
+
+    //Open the device file and check that it was opened correctly
     int fd = open("/dev/prime_finder", O_RDWR);
+    if(fd < 0) {
+        printf("Failed to open device file\n");
+        return -1;
+    }
 
+
+    //Determine the number that the prime number search should start from
+    //If a start number was provided on the command line then use that
     unsigned int start_number;
-    printf("Enter the start number: ");
-    scanf("%ud", &start_number);
+    if(argc >= 2) {
+        start_number = atol(argv[1]);
+    }
+    //Otherwise ask the user to provide one
+    else {
+        printf("Enter the start number: ");
+        scanf("%ud", &start_number);
+    }
 
-    uint32_t data[2] = {1, 4};
-
+    //Clear all of the registers on the device and then start the prime number search
     clear_registers(fd);
-
     start_search(fd, start_number);
 
+    //Busy loop until the prime search completes
     while(check_complete(fd) != 1) {
         usleep(250000);
     }
+
+    //Read the result back from the device and print it
     printf("%u\n", read_result(fd));
 
     return 0;
