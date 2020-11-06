@@ -12,10 +12,21 @@
 #include <linux/pci.h>
 #include <asm/byteorder.h>
 
+//Defines macros for each register in the prime finder device
+#include "device_registers.h"
+
 #define DEVICE_NAME "prime_finder_driver"
 #define BUFFER_SIZE 100
 
 #define AXI_OFFSET 0x0000
+
+//Controls whether profiling specific featurs should be included in the driver
+#define PROFILING_MODE
+
+#ifdef PROFILING_MODE
+long long cycle_start_count = 0;
+long long cycle_delta = 0;
+#endif
 
 ////////////////////////////////////
 //PCI stuff
@@ -109,6 +120,14 @@ ssize_t read(struct file *filp, char __user *buff, size_t count, loff_t *offp) {
 
     val = ioread32(pci_ptr + AXI_OFFSET + *offp);
 
+    #ifdef PROFILING_MODE
+    //Detect when '1' is written to to the start register
+    if(*offp == DONE_FLAG && val == 1) {
+        cycle_delta = rdtsc() - cycle_start_count;
+        printk(KERN_INFO "Stoping cycle counter: %lld\n", cycle_delta);
+    }
+    #endif
+
     *offp += count;
 
     not_copied_count = copy_to_user(buff, &val, sizeof(unsigned int));
@@ -133,6 +152,15 @@ ssize_t write(struct file *filp, const char __user *buff, size_t count, loff_t *
     printk(KERN_INFO "WRITE\n");
     printk(KERN_INFO "WRITE COUNT: %ld\n", count);
     printk(KERN_INFO "WRITE OFFSET: %lld", *offp);
+
+    #ifdef PROFILING_MODE
+    //Detect when '1' is written to to the start register
+    if(*offp == START_FLAG && *kernel_ptr & 1) {
+        printk(KERN_INFO "Starting cycle counter\n");
+        cycle_start_count = rdtsc();
+    }
+    #endif
+
 
     // iowrite8_rep(pci_ptr + *offp, kernel_ptr, count);
     iowrite32(kernel_ptr[0], pci_ptr + AXI_OFFSET + *offp);
