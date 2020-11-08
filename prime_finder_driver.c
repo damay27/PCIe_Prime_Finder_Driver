@@ -137,6 +137,7 @@ ssize_t read(struct file *filp, char __user *buff, size_t count, loff_t *offp) {
 
 ssize_t write(struct file *filp, const char __user *buff, size_t count, loff_t *offp) {
 
+    unsigned long not_copied_count;
     u32 *kernel_ptr;
 
     //Check that the userspace buffer is valid
@@ -147,7 +148,7 @@ ssize_t write(struct file *filp, const char __user *buff, size_t count, loff_t *
     
     //Copy the userspace buffer to a kernel space buffer
     kernel_ptr = (u32*) kmalloc(count * sizeof(char), GFP_KERNEL);
-    copy_from_user(kernel_ptr, buff, count);
+    not_copied_count = copy_from_user(kernel_ptr, buff, count);
 
     printk(KERN_INFO "WRITE\n");
     printk(KERN_INFO "WRITE COUNT: %ld\n", count);
@@ -169,7 +170,7 @@ ssize_t write(struct file *filp, const char __user *buff, size_t count, loff_t *
 
     *offp += count;
 
-    return 0;
+    return (count - not_copied_count);
 }
 
 int open (struct inode *inode, struct file *filp) {
