@@ -95,3 +95,11 @@ int check_complete(int fd) {
 uint32_t read_result(int fd) {
     return read_register(fd, PRIME_NUMBER);
 }
+
+uint64_t read_cycle_count(int fd) {
+    uint32_t upper_bits = 0, lower_bits = 0;
+    upper_bits = read_register(fd, CYCLE_COUNT_HIGH);
+    lower_bits = read_register(fd, CYCLE_COUNT_LOW);
+
+    return ( ((uint64_t)upper_bits << 32) | lower_bits );
+}

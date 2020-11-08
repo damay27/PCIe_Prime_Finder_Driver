@@ -107,6 +107,9 @@ int main(int argc, char *argv[]) {
         usleep(250000);
     }
 
+    uint64_t cycle_count = read_cycle_count(fd);
+    printf("Cycle count: %lu\n", cycle_count);
+
     //Read the result back from the device and print it
     printf("%u\n", read_result(fd));
 
