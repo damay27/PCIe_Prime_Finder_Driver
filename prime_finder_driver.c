@@ -11,6 +11,7 @@
 #include <linux/vmalloc.h>
 #include <linux/pci.h>
 #include <asm/byteorder.h>
+#include <linux/interrupt.h>
 
 //Defines macros for each register in the prime finder device
 #include "device_registers.h"
@@ -32,9 +33,16 @@ long long cycle_delta = 0;
 //PCI stuff
 ////////////////////////////////////
 
+//Interrupt handler function
+static irqreturn_t interrupt_handler(int irq, void *dev) {
+    printk(KERN_INFO "INTERRUPT: %d\n", irq);
+    return IRQ_HANDLED;
+}
+
 //Pointer to the start of the BAR0 address space AFTER it has been 
 //mapped into the virtual address space.
 char *pci_ptr;
+u8 interrupt_number;
 
 //This function is called when the driver and device are paired together.
 int pci_probe (struct pci_dev *dev, const struct pci_device_id *id) {
@@ -50,6 +58,9 @@ int pci_probe (struct pci_dev *dev, const struct pci_device_id *id) {
 
     //Read the vendor ID from the configuration space of the device.
     pci_read_config_word(dev, PCI_VENDOR_ID, &vendor_id);
+
+    //TODO: Add error checking for this.
+
     //All PCI values are big endian so the conversion to the cpu byte ordering
     //is required to make sure this works on all platforms.
     printk(KERN_INFO "%d\n", be16_to_cpu(vendor_id));
@@ -60,6 +71,10 @@ int pci_probe (struct pci_dev *dev, const struct pci_device_id *id) {
 
     //Map the BAR0 memory region of the device into the virtual address space.
     pci_ptr = (char*) ioremap(pci_ptr_int_start, pci_ptr_int_end - pci_ptr_int_start);
+
+        pci_read_config_byte(dev, PCI_INTERRUPT_LINE, &interrupt_number);
+        // interrupt_number = dev->irq;
+
 
     return status;
 }
@@ -114,9 +129,9 @@ ssize_t read(struct file *filp, char __user *buff, size_t count, loff_t *offp) {
         return -1;
     }
 
-    printk(KERN_INFO "READ\n");
-    printk(KERN_INFO "READ COUNT: %ld\n", count);
-    printk(KERN_INFO "READ OFFSET: %lld", *offp);
+    // printk(KERN_INFO "READ\n");
+    // printk(KERN_INFO "READ COUNT: %ld\n", count);
+    // printk(KERN_INFO "READ OFFSET: %lld", *offp);
 
     val = ioread32(pci_ptr + AXI_OFFSET + *offp);
 
@@ -175,11 +190,20 @@ ssize_t write(struct file *filp, const char __user *buff, size_t count, loff_t *
 
 int open (struct inode *inode, struct file *filp) {
     printk(KERN_INFO "File Opened\n");
+
+    printk("INTERRUPT NUMBER: %d\n", interrupt_number);
+                // request_irq(interrupt_number, interrupt_handler, 0, DEVICE_NAME, NULL);
+
+    //TODO: Error handling for irq_request here
+
     return 0;
 }
 
 int release(struct inode *inode, struct file *filp) {
     printk(KERN_INFO "File Closed\n");
+
+                // free_irq(interrupt_number, NULL);
+
     return 0;
 }
 
@@ -273,12 +297,18 @@ static int __init startup(void) {
 
     printk(KERN_INFO "Startup Complete\n");
 
+                int x = request_irq(interrupt_number, interrupt_handler, 0, DEVICE_NAME, NULL);
+                // int x = request_irq(11, interrupt_handler, 0, DEVICE_NAME, NULL);
+
+                printk(KERN_INFO "WWWWW %d\n", interrupt_number);
+                printk(KERN_INFO "XXXXX %d\n", x);
     return 0;
 }
 
 static void __exit shutdown(void) {
     printk(KERN_INFO "Shutdown\n");
     back_out_char_device();
+                free_irq(interrupt_number, NULL);
     printk(KERN_INFO "Shutdown Complete\n");
 }
 
