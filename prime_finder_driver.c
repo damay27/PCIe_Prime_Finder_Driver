@@ -72,7 +72,16 @@ int pci_probe (struct pci_dev *dev, const struct pci_device_id *id) {
     //Map the BAR0 memory region of the device into the virtual address space.
     pci_ptr = (char*) ioremap(pci_ptr_int_start, pci_ptr_int_end - pci_ptr_int_start);
 
-        pci_read_config_byte(dev, PCI_INTERRUPT_LINE, &interrupt_number);
+        int xxx = pci_alloc_irq_vectors(dev, 1, 1, PCI_IRQ_MSI);
+        printk("XXX: %d\n", xxx);
+
+        interrupt_number = pci_irq_vector(dev, 0);
+        printk("YYY: %d\n", interrupt_number);
+
+        int zzz = request_irq(interrupt_number, interrupt_handler, IRQF_SHARED, DEVICE_NAME, dev);
+        // request_irq(interrupt_number, interrupt_handler, 0, DEVICE_NAME, NULL);
+        printk(KERN_INFO "ZZZ %d\n", zzz);
+        // pci_read_config_byte(dev, PCI_INTERRUPT_LINE, &interrupt_number);
         // interrupt_number = dev->irq;
 
 
@@ -81,6 +90,8 @@ int pci_probe (struct pci_dev *dev, const struct pci_device_id *id) {
 
 //This function is called when the device is removed.
 void pci_remove (struct pci_dev *dev) {
+                    free_irq(interrupt_number, dev);
+                    pci_free_irq_vectors(dev);
     iounmap(pci_ptr);
     pci_disable_device(dev);
     printk(KERN_INFO "PCI REMOVE\n");
@@ -192,8 +203,9 @@ int open (struct inode *inode, struct file *filp) {
     printk(KERN_INFO "File Opened\n");
 
     printk("INTERRUPT NUMBER: %d\n", interrupt_number);
-                // request_irq(interrupt_number, interrupt_handler, 0, DEVICE_NAME, NULL);
-
+                // int x = request_irq(interrupt_number, interrupt_handler, 0, DEVICE_NAME, NULL);
+                // // request_irq(interrupt_number, interrupt_handler, 0, DEVICE_NAME, NULL);
+                // printk(KERN_INFO "XXXXX %d\n", x);
     //TODO: Error handling for irq_request here
 
     return 0;
@@ -202,7 +214,7 @@ int open (struct inode *inode, struct file *filp) {
 int release(struct inode *inode, struct file *filp) {
     printk(KERN_INFO "File Closed\n");
 
-                // free_irq(interrupt_number, NULL);
+                free_irq(interrupt_number, NULL);
 
     return 0;
 }
@@ -297,18 +309,17 @@ static int __init startup(void) {
 
     printk(KERN_INFO "Startup Complete\n");
 
-                int x = request_irq(interrupt_number, interrupt_handler, 0, DEVICE_NAME, NULL);
+                // int x = request_irq(interrupt_number, interrupt_handler, 0, DEVICE_NAME, NULL);
                 // int x = request_irq(11, interrupt_handler, 0, DEVICE_NAME, NULL);
 
-                printk(KERN_INFO "WWWWW %d\n", interrupt_number);
-                printk(KERN_INFO "XXXXX %d\n", x);
+                // printk(KERN_INFO "WWWWW %d\n", interrupt_number);
+                // printk(KERN_INFO "XXXXX %d\n", x);
     return 0;
 }
 
 static void __exit shutdown(void) {
     printk(KERN_INFO "Shutdown\n");
     back_out_char_device();
-                free_irq(interrupt_number, NULL);
     printk(KERN_INFO "Shutdown Complete\n");
 }
 
