@@ -72,6 +72,10 @@ int pci_probe (struct pci_dev *dev, const struct pci_device_id *id) {
     //Map the BAR0 memory region of the device into the virtual address space.
     pci_ptr = (char*) ioremap(pci_ptr_int_start, pci_ptr_int_end - pci_ptr_int_start);
 
+        pci_set_master(dev);
+
+        //pci_enable_msi(dev);
+
         int xxx = pci_alloc_irq_vectors(dev, 1, 1, PCI_IRQ_MSI);
         printk("XXX: %d\n", xxx);
 
