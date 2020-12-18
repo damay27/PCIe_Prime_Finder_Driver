@@ -12,6 +12,7 @@
 #include <linux/pci.h>
 #include <asm/byteorder.h>
 #include <linux/interrupt.h>
+#include <linux/mm.h>
 
 //Defines macros for each register in the prime finder device
 #include "device_registers.h"
@@ -42,6 +43,8 @@ static irqreturn_t interrupt_handler(int irq, void *dev) {
 //Pointer to the start of the BAR0 address space AFTER it has been 
 //mapped into the virtual address space.
 char *pci_ptr;
+unsigned long bar0_size;
+unsigned long bar0_start;
 u8 interrupt_number;
 
 //This function is called when the driver and device are paired together.
@@ -69,8 +72,11 @@ int pci_probe (struct pci_dev *dev, const struct pci_device_id *id) {
     pci_ptr_int_start = pci_resource_start(dev, 0);
     pci_ptr_int_end = pci_resource_end(dev, 0);
 
+    bar0_size = pci_ptr_int_end - pci_ptr_int_start;
+    bar0_start = pci_ptr_int_start;
+
     //Map the BAR0 memory region of the device into the virtual address space.
-    pci_ptr = (char*) ioremap(pci_ptr_int_start, pci_ptr_int_end - pci_ptr_int_start);
+    pci_ptr = (char*) ioremap(pci_ptr_int_start, bar0_size);
 
         pci_set_master(dev);
 
@@ -134,6 +140,17 @@ static struct pci_driver pci_driver_struct = {
 dev_t char_device_numbers;
 
 //File operations
+
+int mmap(struct file *filep, struct vm_area_struct *vma) {
+    unsigned long off = vma->vm_pgoff << PAGE_SHIFT;
+    vma->vm_flags = VM_IO | VM_DONTEXPAND | VM_DONTDUMP;
+    vma->vm_page_prot = pgprot_noncached(vma->vm_page_prot);
+    int status = io_remap_pfn_range(vma, vma->vm_start, (bar0_start+off)>>PAGE_SHIFT, vma->vm_end - vma->vm_start, vma->vm_page_prot);
+    printk("MMAP STATUS: %d\n", status);
+    printk("%lu\n", vma->vm_start);
+    return status;
+}
+
 ssize_t read(struct file *filp, char __user *buff, size_t count, loff_t *offp) {
     //The way that this works is that the offset is not "remembered" between function calls
     unsigned int val;
@@ -218,8 +235,6 @@ int open (struct inode *inode, struct file *filp) {
 int release(struct inode *inode, struct file *filp) {
     printk(KERN_INFO "File Closed\n");
 
-                free_irq(interrupt_number, NULL);
-
     return 0;
 }
 
@@ -245,7 +260,7 @@ struct file_operations file_ops = {
     .llseek = llseek,
     .open = open,
     .release = release,
-
+    .mmap = mmap,
 };
 
 struct cdev char_device;
