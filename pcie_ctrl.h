@@ -42,7 +42,7 @@ static struct pci_driver pci_driver_struct = {
 
 //Pointer to the start of the BAR0 address space AFTER it has been 
 //mapped into the virtual address space.
-extern char *pci_ptr;
+extern char *bar0_ptr;
 //Data related to bar 0 on the device
 extern unsigned long bar0_size;
 extern unsigned long bar0_start;

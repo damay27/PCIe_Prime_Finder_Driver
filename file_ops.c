@@ -44,7 +44,7 @@ ssize_t read(struct file *filp, char __user *buff, size_t count, loff_t *offp) {
     // printk(KERN_INFO "READ COUNT: %ld\n", count);
     // printk(KERN_INFO "READ OFFSET: %lld", *offp);
 
-    val = ioread32(pci_ptr + AXI_OFFSET + *offp);
+    val = ioread32(bar0_ptr + AXI_OFFSET + *offp);
 
     #ifdef PROFILING_MODE
     //Detect when '1' is written to to the start register
@@ -89,8 +89,7 @@ ssize_t write(struct file *filp, const char __user *buff, size_t count, loff_t *
     #endif
 
 
-    // iowrite8_rep(pci_ptr + *offp, kernel_ptr, count);
-    iowrite32(kernel_ptr[0], pci_ptr + AXI_OFFSET + *offp);
+    iowrite32(kernel_ptr[0], bar0_ptr + AXI_OFFSET + *offp);
 
     kfree(kernel_ptr);
 
