@@ -1,6 +1,6 @@
 #!/bin/bash
 
-DRIVER_NAME=prime_finder_driver
+DRIVER_NAME=prime_finder
 DEVICE_FILE_NAME=prime_finder
 
 ./device_refresh.sh
