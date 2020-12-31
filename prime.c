@@ -2,7 +2,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "device_registers.h"
+#include "device_specific.h"
 
 ////////////////////////////////////////////////////
 //Low-level API
