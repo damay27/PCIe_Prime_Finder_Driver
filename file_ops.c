@@ -4,6 +4,7 @@
 
 #include <linux/uaccess.h>
 #include <linux/slab.h>
+#include <linux/types.h>
 
 
 const struct file_operations file_ops = {
@@ -14,9 +15,46 @@ const struct file_operations file_ops = {
     .open = open,
     .release = release,
     .mmap = mmap,
+    .unlocked_ioctl = ioctl,
 };
 
 
+DECLARE_COMPLETION(ioctl_completion);
+
+
+long int ioctl(struct file *filp, unsigned int cmd, unsigned long arg) {
+    
+    //Case 0 variables
+    u32 start_value;
+    int completion_status;
+    
+    printk(KERN_INFO "IOCTL: %d\n", cmd);
+    printk(KERN_INFO "%lu\n", arg);
+
+    switch(cmd) {
+        
+        //0 -> blocking prime search operation
+        case 0:
+            //In this case the paramater is interpreted as an unsigned integer
+            start_value = (u32) arg;
+            //Write the start value
+            // iowrite32(start_value, bar0_ptr + AXI_OFFSET + START_NUMBER);
+            iowrite32(start_value, bar0_ptr + START_NUMBER);
+            //Set the start bit
+            // iowrite32(1, bar0_ptr + AXI_OFFSET + START_FLAG);
+            iowrite32(1, bar0_ptr + START_FLAG);
+            //Wait for the interrupt to fire which tells us the task is complete
+            if( wait_for_completion_interruptible(&ioctl_completion) != 0 ) {
+                return -2;
+            }
+            //Read back the value and return the result
+            // return ioread32(bar0_ptr + AXI_OFFSET + PRIME_NUMBER);
+            return ioread32(bar0_ptr + PRIME_NUMBER);
+        default:
+            return -1;
+
+    }
+}
 
 int mmap(struct file *filep, struct vm_area_struct *vma) {
     int status;
@@ -44,7 +82,8 @@ ssize_t read(struct file *filp, char __user *buff, size_t count, loff_t *offp) {
     // printk(KERN_INFO "READ COUNT: %ld\n", count);
     // printk(KERN_INFO "READ OFFSET: %lld", *offp);
 
-    val = ioread32(bar0_ptr + AXI_OFFSET + *offp);
+    // val = ioread32(bar0_ptr + AXI_OFFSET + *offp);
+    val = ioread32(bar0_ptr + *offp);
 
     #ifdef PROFILING_MODE
     //Detect when '1' is written to to the start register
@@ -80,16 +119,16 @@ ssize_t write(struct file *filp, const char __user *buff, size_t count, loff_t *
     printk(KERN_INFO "WRITE COUNT: %ld\n", count);
     printk(KERN_INFO "WRITE OFFSET: %lld", *offp);
 
-    #ifdef PROFILING_MODE
-    //Detect when '1' is written to to the start register
-    if(*offp == START_FLAG && *kernel_ptr & 1) {
-        printk(KERN_INFO "Starting cycle counter\n");
-        cycle_start_count = rdtsc();
-    }
-    #endif
+    // #ifdef PROFILING_MODE
+    // //Detect when '1' is written to to the start register
+    // if(*offp == START_FLAG && *kernel_ptr & 1) {
+    //     printk(KERN_INFO "Starting cycle counter\n");
+    //     cycle_start_count = rdtsc();
+    // }
+    // #endif
 
-
-    iowrite32(kernel_ptr[0], bar0_ptr + AXI_OFFSET + *offp);
+    // iowrite32(kernel_ptr[0], bar0_ptr + AXI_OFFSET + *offp);
+    iowrite32(kernel_ptr[0], bar0_ptr + *offp);
 
     kfree(kernel_ptr);
 
@@ -129,3 +168,4 @@ loff_t llseek(struct file *filp, loff_t offset, int whence) {
 
     return filp->f_pos;
 }
+

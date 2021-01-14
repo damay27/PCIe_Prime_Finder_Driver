@@ -6,6 +6,9 @@
 
 #include "prime.h"
 
+
+#include <sys/ioctl.h>
+
 int main(int argc, char *argv[]) {
     int count;
 
@@ -31,6 +34,10 @@ int main(int argc, char *argv[]) {
 
     //Clear all of the registers on the device and then start the prime number search
     clear_registers(fd);
+
+
+    //To run the test using polling uncomment this code and commend the below code
+    /*
     start_search(fd, start_number);
 
     //Busy loop until the prime search completes
@@ -40,6 +47,10 @@ int main(int argc, char *argv[]) {
 
     uint64_t cycle_count = read_cycle_count(fd);
     printf("Cycle count: %lu\n", cycle_count);
+    */
+
+    //Test using blocking
+    printf("%d\n", ioctl(fd, 0, start_number));
 
     //Read the result back from the device and print it
     printf("%u\n", read_result(fd));

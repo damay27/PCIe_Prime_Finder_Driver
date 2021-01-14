@@ -1,4 +1,5 @@
 #include "pcie_ctrl.h"
+#include "file_ops.h"
 
 //Add data about supported devices to the module table so the kernel
 //knows what devices this drives should be paired with.
@@ -17,6 +18,7 @@ u8 interrupt_number;
 //Interrupt handler function
 static irqreturn_t interrupt_handler(int irq, void *dev) {
     printk(KERN_INFO "INTERRUPT: %d\n", irq);
+    complete(&ioctl_completion);
     return IRQ_HANDLED;
 }
 
@@ -51,21 +53,21 @@ int pci_probe (struct pci_dev *dev, const struct pci_device_id *id) {
     //Map the BAR0 memory region of the device into the virtual address space.
     bar0_ptr = (char*) ioremap(bar0_ptr_int_start, bar0_size);
 
-        pci_set_master(dev);
+    //Make the device a bus master so that it can raise interrupts
+    pci_set_master(dev);
 
-        //pci_enable_msi(dev);
+    //Allocate a single interrupt vector
+    int vector_count = pci_alloc_irq_vectors(dev, 1, 1, PCI_IRQ_MSI);
+    printk(KERN_INFO "Allocated Vector Count: %d\n", vector_count);
 
-        int xxx = pci_alloc_irq_vectors(dev, 1, 1, PCI_IRQ_MSI);
-        printk("XXX: %d\n", xxx);
+    //Get the IRQ number for the vector
+    interrupt_number = pci_irq_vector(dev, 0);
+    printk(KERN_INFO "Assigned IRO: %d\n", interrupt_number);
 
-        interrupt_number = pci_irq_vector(dev, 0);
-        printk("YYY: %d\n", interrupt_number);
+    //Attach a handler to the IRQ number
+    int irq_request_status = request_irq(interrupt_number, interrupt_handler, IRQF_SHARED, DEVICE_NAME, dev);
+    printk(KERN_INFO "IRQ Request Status: %d\n", irq_request_status);
 
-        int zzz = request_irq(interrupt_number, interrupt_handler, IRQF_SHARED, DEVICE_NAME, dev);
-        // request_irq(interrupt_number, interrupt_handler, 0, DEVICE_NAME, NULL);
-        printk(KERN_INFO "ZZZ %d\n", zzz);
-        // pci_read_config_byte(dev, PCI_INTERRUPT_LINE, &interrupt_number);
-        // interrupt_number = dev->irq;
 
 
     return status;
@@ -73,8 +75,8 @@ int pci_probe (struct pci_dev *dev, const struct pci_device_id *id) {
 
 //This function is called when the device is removed.
 void pci_remove (struct pci_dev *dev) {
-                    free_irq(interrupt_number, dev);
-                    pci_free_irq_vectors(dev);
+    free_irq(interrupt_number, dev);
+    pci_free_irq_vectors(dev);
     iounmap(bar0_ptr);
     pci_disable_device(dev);
     printk(KERN_INFO "PCI REMOVE\n");
