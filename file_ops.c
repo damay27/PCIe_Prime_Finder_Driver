@@ -22,6 +22,14 @@ const struct file_operations file_ops = {
 DECLARE_COMPLETION(ioctl_completion);
 
 
+//This scruct is defined here since it should not be used outside
+//of this file. This structure is mirrored in prime.c but uses
+//the stdint.h integer definitions (uint32_t).
+struct ioctl_struct {
+    u32 start_val;
+    u32 search_result;
+};
+
 long int ioctl(struct file *filp, unsigned int cmd, unsigned long arg) {
     
     //Case 0 variables
@@ -31,25 +39,58 @@ long int ioctl(struct file *filp, unsigned int cmd, unsigned long arg) {
     printk(KERN_INFO "IOCTL: %d\n", cmd);
     printk(KERN_INFO "%lu\n", arg);
 
+    struct ioctl_struct kernel_space_struct;
+    unsigned long not_copied_count;
+    struct ioctl_struct __user *user_space_ptr;
+
+
     switch(cmd) {
         
         //0 -> blocking prime search operation
         case 0:
-            //In this case the paramater is interpreted as an unsigned integer
-            start_value = (u32) arg;
+            
+            // struct ioctl_struct kernel_space_struct;
+            // unsigned long not_copied_count;
+
+            //The arg is a pointer to a userspace structure that mirrors the 
+            user_space_ptr = (struct ioctl_struct*) arg;
+            //Check that the userspace buffer is valid
+            if(!access_ok((struct ioctl_struct*) arg, sizeof(struct ioctl_struct))) {
+                printk(KERN_INFO "Ioctl struct error\n");
+                return -1;
+            }
+            
+            //Copy the userspace struct to kernel space
+            // not_copied_count = copy_from_user(&kernel_space_struct, user_space_ptr, sizeof(struct ioctl_struct));
+            not_copied_count = copy_from_user(&kernel_space_struct, (struct ioctl_struct*) arg, sizeof(struct ioctl_struct));
+
+            if(not_copied_count != 0) {
+                printk(KERN_INFO "Faild to copy ioctl struct from user space\n");
+                return -2;
+            }
+
+            start_value = (u32) kernel_space_struct.start_val;
             //Write the start value
-            // iowrite32(start_value, bar0_ptr + AXI_OFFSET + START_NUMBER);
             iowrite32(start_value, bar0_ptr + START_NUMBER);
             //Set the start bit
-            // iowrite32(1, bar0_ptr + AXI_OFFSET + START_FLAG);
             iowrite32(1, bar0_ptr + START_FLAG);
             //Wait for the interrupt to fire which tells us the task is complete
             if( wait_for_completion_interruptible(&ioctl_completion) != 0 ) {
-                return -2;
+                return -3;
             }
             //Read back the value and return the result
-            // return ioread32(bar0_ptr + AXI_OFFSET + PRIME_NUMBER);
-            return ioread32(bar0_ptr + PRIME_NUMBER);
+            kernel_space_struct.search_result = ioread32(bar0_ptr + PRIME_NUMBER);
+
+            //Copy the structure back to user space
+            not_copied_count = copy_to_user(user_space_ptr, &kernel_space_struct, sizeof(struct ioctl_struct));
+
+            if(not_copied_count != 0) {
+                printk(KERN_INFO "Faild to copy ioctl struct from user space\n");
+                return -2;
+            }
+
+            return 0;
+
         default:
             return -1;
 

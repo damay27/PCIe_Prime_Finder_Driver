@@ -50,10 +50,9 @@ int main(int argc, char *argv[]) {
     */
 
     //Test using blocking
-    printf("%d\n", ioctl(fd, 0, start_number));
-
-    //Read the result back from the device and print it
-    printf("%u\n", read_result(fd));
+    uint32_t prime;
+    find_prime(fd, 4, &prime);
+    printf("%d\n", prime);
 
     return 0;
 }

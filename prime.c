@@ -1,6 +1,7 @@
 #include <stdint.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 
 #include "device_specific.h"
 
@@ -102,4 +103,29 @@ uint64_t read_cycle_count(int fd) {
     lower_bits = read_register(fd, CYCLE_COUNT_LOW);
 
     return ( ((uint64_t)upper_bits << 32) | lower_bits );
+}
+
+//This scruct is defined here since it should not be used outside
+//of this file. This structure is mirrored in file_ops.c but uses
+//the kernels internal integer definitions (u32).
+struct ioctl_struct {
+    uint32_t start_val;
+    uint32_t search_result;
+};
+
+int find_prime(int fd, uint32_t start_val, uint32_t *search_result) {
+    int status;
+
+    struct ioctl_struct user_space_struct;
+    user_space_struct.start_val = start_val;
+
+    status = ioctl(fd, 0, &user_space_struct);
+
+    if(status == 0) {
+        *search_result = user_space_struct.search_result;
+        return 0;
+    }
+    else {
+        return -1;
+    }
 }
