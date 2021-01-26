@@ -1,5 +1,3 @@
-// #define AXI_OFFSET 0x0000
-
 #define LITEFURY_VENDOR_ID 0x10EE
 #define LITEFURY_DEVICE_ID 0x7014
 

@@ -10,10 +10,28 @@
 //Interrupt handler function
 static irqreturn_t interrupt_handler(int irq, void *dev);
 
-//This function is called when the driver and device are paired together.
+/*
+    This function is called when the kernel finds a device that can be
+    paired with the driver.
+
+    Parameters:
+        dev     -> Device structure pointer of the device the driver is
+                   being paired with.
+        id      -> Pointer to the ID information of the device being 
+                   paired.
+
+    Return:
+        0 on success and a negative value on failure.
+*/
 int pci_probe (struct pci_dev *dev, const struct pci_device_id *id);
 
-//This function is called when the device is removed.
+/*
+    This function is called when the device is removed.
+    Paramaters:
+        dev     -> Pointer to the device the driver is paired with
+    Return:
+        Nothing.
+*/
 void pci_remove (struct pci_dev *dev);
 
 //This array contains the several PCI device id structures. These structures

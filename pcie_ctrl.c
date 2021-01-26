@@ -22,7 +22,19 @@ static irqreturn_t interrupt_handler(int irq, void *dev) {
     return IRQ_HANDLED;
 }
 
-//This function is called when the driver and device are paired together.
+/*
+    This function is called when the kernel finds a device that can be
+    paired with the driver.
+
+    Parameters:
+        dev     -> Device structure pointer of the device the driver is
+                   being paired with.
+        id      -> Pointer to the ID information of the device being 
+                   paired.
+
+    Return:
+        0 on success and a negative value on failure.
+*/
 int pci_probe (struct pci_dev *dev, const struct pci_device_id *id) {
     int status;
     u16 vendor_id;
@@ -34,10 +46,16 @@ int pci_probe (struct pci_dev *dev, const struct pci_device_id *id) {
     printk(KERN_INFO "PCI PROBE\n");
     status = pci_enable_device(dev);
 
-    //Read the vendor ID from the configuration space of the device.
-    pci_read_config_word(dev, PCI_VENDOR_ID, &vendor_id);
+    if(status != 0) {
+        return status;
+    }
 
-    //TODO: Add error checking for this.
+    //Read the vendor ID from the configuration space of the device.
+    status = pci_read_config_word(dev, PCI_VENDOR_ID, &vendor_id);
+
+    if(status != 0) {
+        return status;
+    }
 
     //All PCI values are big endian so the conversion to the cpu byte ordering
     //is required to make sure this works on all platforms.
@@ -68,16 +86,25 @@ int pci_probe (struct pci_dev *dev, const struct pci_device_id *id) {
     int irq_request_status = request_irq(interrupt_number, interrupt_handler, IRQF_SHARED, DEVICE_NAME, dev);
     printk(KERN_INFO "IRQ Request Status: %d\n", irq_request_status);
 
-
-
     return status;
 }
 
-//This function is called when the device is removed.
+/*
+    This function is called when the device is removed.
+    Paramaters:
+        dev     -> Pointer to the device the driver is paired with
+    Return:
+        Nothing.
+*/
 void pci_remove (struct pci_dev *dev) {
+
+    //Free up the interrupt
     free_irq(interrupt_number, dev);
+    //Free up the interrupt vectors
     pci_free_irq_vectors(dev);
+    //Un-map BAR0 from kernel space
     iounmap(bar0_ptr);
+    //Disable the device
     pci_disable_device(dev);
     printk(KERN_INFO "PCI REMOVE\n");
 }

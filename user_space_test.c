@@ -3,11 +3,10 @@
 #include <fcntl.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <sys/ioctl.h>
 
 #include "prime.h"
 
-
-#include <sys/ioctl.h>
 
 int main(int argc, char *argv[]) {
     int count;
@@ -35,24 +34,53 @@ int main(int argc, char *argv[]) {
     //Clear all of the registers on the device and then start the prime number search
     clear_registers(fd);
 
-
+    ///////////////////////////////////////////////////////////////////////////////////////////
     //To run the test using polling uncomment this code and commend the below code
-    /*
-    start_search(fd, start_number);
+    ///////////////////////////////////////////////////////////////////////////////////////////
 
-    //Busy loop until the prime search completes
-    while(check_complete(fd) != 1) {
-        usleep(250000);
+    int status;
+    
+    status = start_search(fd, start_number);
+    if(status != 0) {
+        printf("Error starting search\n");
+        return -1;
     }
 
-    uint64_t cycle_count = read_cycle_count(fd);
-    printf("Cycle count: %lu\n", cycle_count);
-    */
+    //Busy loop until the prime search completes
+    uint32_t complete;
+    do {
+        status = check_complete(fd, &complete);
+        if(status != 0) {
+            printf("Error checking search completion\n");
+            return -1;
+        }
+        usleep(250000);
+    } while(complete != 1);
 
+    uint64_t cycle_count;
+    status = read_cycle_count(fd, &cycle_count);
+    if(status != 0) {
+        printf("Error reading cycle count\n");
+        return -1;
+    }
+    printf("Cycle count: %lu\n", cycle_count);
+
+    uint32_t result;
+    status = read_result(fd, &result);
+    if(status != 0) {
+        printf("Error reading search result\n");
+        return -1;
+    }
+    printf("Prime search result: %u\n", result);
+    
+
+    ///////////////////////////////////////////////////////////////////////////////////////////
     //Test using blocking
-    uint32_t prime;
-    find_prime(fd, 4, &prime);
-    printf("%d\n", prime);
+    ///////////////////////////////////////////////////////////////////////////////////////////
+
+    // uint32_t prime;
+    // find_prime(fd, start_number, &prime);
+    // printf("%d\n", prime);
 
     return 0;
 }

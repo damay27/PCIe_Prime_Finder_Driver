@@ -1,38 +1,20 @@
 #include <linux/module.h>
 #include <linux/version.h>
 #include <linux/kernel.h>
-// #include <linux/fs.h>
 #include <linux/cdev.h>
-// #include <linux/slab.h>
-// #include <linux/uaccess.h>
 #include <linux/semaphore.h>
-
-// #include <linux/types.h>
 #include <linux/vmalloc.h>
-// #include <linux/pci.h>
 #include <asm/byteorder.h>
-// #include <linux/interrupt.h>
 #include <linux/mm.h>
 
 //Defines macros for each register in the prime finder device
-// #include "device_registers.h"
 #include "file_ops.h"
 #include "pcie_ctrl.h"
-
-// #define DEVICE_NAME "prime_finder_driver"
-#define BUFFER_SIZE 100
-
-//Controls whether profiling specific featurs should be included in the driver
-#define PROFILING_MODE
-
-#ifdef PROFILING_MODE
-long long cycle_start_count = 0;
-long long cycle_delta = 0;
-#endif
 
 //Device major and minor numbers
 dev_t char_device_numbers;
 
+//Character device representation within the kernel.
 struct cdev char_device;
 
 //This variable tracks what setup steps have been completed so that these
@@ -74,9 +56,7 @@ static int __init startup(void) {
 
     //Register the character device
     cdev_init(&char_device, &file_ops);
-    // char_device.owner = THIS_MODULE;
-    // char_device.ops = &file_ops;
-    // char_device.dev = char_device_numbers;
+
     //Once the character device is added it is considered to be live
     err = cdev_add(&char_device, char_device_numbers, 1);
     if(err < 0) {
@@ -95,19 +75,14 @@ static int __init startup(void) {
     }
     setup_status++;
 
-
     printk(KERN_INFO "Startup Complete\n");
 
-                // int x = request_irq(interrupt_number, interrupt_handler, 0, DEVICE_NAME, NULL);
-                // int x = request_irq(11, interrupt_handler, 0, DEVICE_NAME, NULL);
-
-                // printk(KERN_INFO "WWWWW %d\n", interrupt_number);
-                // printk(KERN_INFO "XXXXX %d\n", x);
     return 0;
 }
 
 static void __exit shutdown(void) {
     printk(KERN_INFO "Shutdown\n");
+    //This function will backout the setup steps in the reverse order that they occured
     back_out_char_device();
     printk(KERN_INFO "Shutdown Complete\n");
 }
@@ -115,4 +90,4 @@ static void __exit shutdown(void) {
 module_init(startup);
 module_exit(shutdown);
 
-MODULE_LICENSE("GPL");
+MODULE_LICENSE("MIT");
