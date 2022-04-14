@@ -57,7 +57,7 @@ long int ioctl(struct file *filp, unsigned int cmd, unsigned long arg) {
     
     //Pring logging data
     printk(KERN_INFO "IOCTL: %d\n", cmd);
-    printk(KERN_INFO "%IOCTL ARG: lu\n", arg);
+    printk(KERN_INFO "IOCTL ARG: %lu\n", arg);
 
 
     switch(cmd) {
@@ -82,7 +82,7 @@ long int ioctl(struct file *filp, unsigned int cmd, unsigned long arg) {
 
             //Make sure all of the data could be copied
             if(not_copied_count != 0) {
-                printk(KERN_INFO "Faild to copy ioctl struct from user space\n");
+                printk(KERN_INFO "Failed to copy ioctl struct from user space\n");
                 return -2;
             }
 
@@ -104,7 +104,7 @@ long int ioctl(struct file *filp, unsigned int cmd, unsigned long arg) {
             not_copied_count = copy_to_user(user_space_ptr, &kernel_space_struct, sizeof(struct ioctl_struct));
 
             if(not_copied_count != 0) {
-                printk(KERN_INFO "Faild to copy ioctl struct from user space\n");
+                printk(KERN_INFO "Failed to copy ioctl struct from user space\n");
                 return -2;
             }
 
